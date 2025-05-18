@@ -1,14 +1,14 @@
-import { appRequest } from "module/_core/infras/config/request/axios";
-import { requester } from "module/_core/infras/config/request/requester";
+import { GetOneUserDTO, UserDTO } from "module/user/domain/dto/user";
 import { AuthEndpoint } from "../../infras/config/endpointUrl";
-import { GetMeDTO } from "../dto/me";
-import { IMe } from "../model/me";
+import { requester } from "@module/_core/infras/config/request";
 
 export class MeApi {
     static async getMe() {
-        return requester<IMe>({
-            requestFunc: () => appRequest.mapServer.get(AuthEndpoint.auth()),
-            handleData: (data: GetMeDTO) => data.data.user
+        return requester.call<UserDTO>({
+            requestFunc: () => requester.mapServerAxios.get(AuthEndpoint.auth()),
+            handleData: (data: GetOneUserDTO) => {
+                return data.data.user;
+            }
         })();
     }
 }

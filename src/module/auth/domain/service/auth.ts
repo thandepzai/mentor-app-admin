@@ -1,11 +1,11 @@
+import { useFetcher } from "module/_core/infras/hook/useFetcher";
 import { errorHandler } from "module/_core/infras/util/exceptionHandler";
+import { isOnServer } from "module/_core/infras/util/isOnServer";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useGlobalState } from "lib/hook/useGlobalState";
-import { useIsomorphicLayoutEffect } from "lib/hook/useIsomorphicLayoutEffect";
 import { AuthApi } from "../api/auth";
 import { MeApi } from "../api/me";
-import { LoginDTO } from "../dto/login";
-import { RegisterDTO } from "../dto/register";
+import { PermissionAuth } from "../config/type/authOption";
+import { LoginDTO } from "../dto/auth";
 import { IMe } from "../model/me";
 import { MeService } from "./me";
 
@@ -17,32 +17,41 @@ export interface IAuth {
 export class AuthService {
     static AUTH_KEY = "AUTH_KEY";
 
-    static useInitAuth = () => {
-        const { mutate } = this.useAuth(() => 0);
-        const { verifyAuthMutation } = this.useAuthAction();
-
-        useIsomorphicLayoutEffect(() => {
-            const auth = this.getAuth();
-            if (auth) {
-                mutate(auth);
-                // appRequest.updateTokenMapServer(auth.accessToken);
-                verifyAuthMutation.mutate();
-            }
-        }, []);
-    };
-
-    static useAuth = (select?: (state: IAuth | null) => any) => {
-        const { data, mutate } = useGlobalState<IAuth | null>([this.AUTH_KEY], {
-            initialData: null,
+    static useAuth = (select?: (state: IAuth | undefined) => any) => {
+        const { data, refetch } = useFetcher([this.AUTH_KEY], this.getAuth, {
+            initialData: this.getAuth,
             notifyOnChangeProps: ["data", "isPending"],
             select
         });
 
+        // Verify Access Control By Resource
+        const verifyACR = (...resources: string[]) => {
+            return resources.some((resouce) =>
+                data?.user?.permissions?.some((userPermission) => resouce == userPermission.resource)
+            );
+        };
+
+        // Verify Access Control By Permission
+        const verifyACP = (...permissions: PermissionAuth[]) => {
+            return permissions.some((permission) =>
+                data?.user?.permissions?.some(
+                    (userPermission) =>
+                        permission.resource == userPermission.resource && permission.action == userPermission.action
+                )
+            );
+        };
+
+        const verifyRBAC = (...roles: string[]) => {
+            return roles.some((role) => data?.user?.roles?.some((userRole) => role == userRole.code));
+        };
+
         return {
-            isLogin: !!data?.user,
             user: data?.user,
-            accessToken: data?.accessToken,
-            mutate
+            isLogin: !!data?.user,
+            verifyACP,
+            verifyACR,
+            verifyRBAC,
+            refetch
         };
     };
 
@@ -72,11 +81,9 @@ export class AuthService {
                 queryClient.setQueryData([this.AUTH_KEY], data);
                 meAction.mutateLocal(data.user);
             },
-            onError: errorHandler
-        });
-
-        const registerMutation = useMutation({
-            mutationFn: (registerDto: RegisterDTO) => AuthApi.register(registerDto)
+            onError: (error) => {
+                console.log("ERRROR", error);
+            }
         });
 
         const logoutMutation = useMutation({
@@ -85,39 +92,29 @@ export class AuthService {
             onSettled: AuthService.logout
         });
 
-        const loginGoogleMutation = useMutation({
-            mutationFn: (token: string) => AuthApi.loginGoogle(token),
-            onSuccess: (data) => {
-                // appRequest.updateTokenMapServer(data.accessToken);
-                localStorage.setItem("user", JSON.stringify(data.user));
-                localStorage.setItem("ACCESS_TOKEN", data.accessToken);
-                queryClient.setQueryData([this.AUTH_KEY], data);
-                meAction.mutateLocal(data.user);
-            },
-            onError: errorHandler
-        });
-
         return {
             loginMutation,
-            registerMutation,
             logoutMutation,
-            verifyAuthMutation,
-            loginGoogleMutation
+            verifyAuthMutation
         };
     };
 
     static getAuth = () => {
-        if (typeof window === "undefined") return;
+        if (isOnServer) return;
         const user = MeService.getLocalUser();
-        const accessToken = localStorage.getItem("ACCESS_TOKEN");
+        const accessToken = this.getLocalAccessToken();
         if (user && accessToken) {
             return { user, accessToken };
-        } else return null;
+        } else return undefined;
     };
 
     static logout = () => {
         location.replace("/");
         localStorage.removeItem("user");
         localStorage.removeItem("ACCESS_TOKEN");
+    };
+
+    static getLocalAccessToken = () => {
+        return localStorage.getItem("ACCESS_TOKEN");
     };
 }

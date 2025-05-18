@@ -1,4 +1,4 @@
 export enum EntityState {
-    ACTIVE = "active",
-    INACTIVE = "inactive"
+    ACTIVE = 1,
+    INACTIVE = 0
 }

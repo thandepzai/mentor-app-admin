@@ -1,29 +1,47 @@
-export const getRelativeTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString);
-    const difference = Math.floor(Date.now() / 1000) - Math.floor(date.getTime() / 1000);
-    let output = ``;
+import { convertToTwoDigit } from "./string";
 
-    if (difference <= 0) {
-        output = `Vừa xong`;
-    } else if (difference < 60) {
-        // Less than a minute has passed:
-        output = `${difference} giây trước`;
-    } else if (difference < 3600) {
-        // Less than an hour has passed:
-        output = `${Math.floor(difference / 60)} phút trước`;
-    } else if (difference < 86400) {
-        // Less than a day has passed:
-        output = `${Math.floor(difference / 3600)} giờ trước`;
-    } else if (difference < 2620800) {
-        // Less than a month has passed:
-        output = `${Math.floor(difference / 86400)} ngày trước`;
-    } else if (difference < 31449600) {
-        // Less than a year has passed:
-        output = `${Math.floor(difference / 2620800)} tháng trước`;
-    } else {
-        // More than a year has passed:
-        output = `${Math.floor(difference / 31449600)} năm trước`;
+export const formatTableTimeString = (timestamp?: string) => {
+    return timestamp ? formatTimeString(timestamp, "H:M DD-MM-YYYY") : "";
+};
+
+export const formatTimeString = (timestamp: string | number | Date, form?: string): string => {
+    const dateObject = new Date(timestamp);
+
+    if (form === undefined) return dateObject.toLocaleString();
+
+    let result = form;
+
+    // const formatObject = {
+    //     DD: convertToTwoDigit(dateObject.getDate()),
+    //     MM: convertToTwoDigit(dateObject.getMonth() + 1),
+    //     YYYY: dateObject.getFullYear()
+    //     H: dateObject.getHours(),
+    //     M: convertToTwoDigit(dateObject.getMinutes()),
+    //     S: convertToTwoDigit(dateObject.getSeconds()),
+    // };
+
+    // for (const [key, value] of Object.entries(formatObject)) {
+    //     result = result.replace(key, value.toString());
+    // }
+
+    if (result.includes("DD")) {
+        result = result.replace("DD", convertToTwoDigit(dateObject.getDate()));
+    }
+    if (result.includes("MM")) {
+        result = result.replace("MM", convertToTwoDigit(dateObject.getMonth() + 1));
+    }
+    if (result.includes("YYYY")) {
+        result = result.replace("YYYY", dateObject.getFullYear().toString());
+    }
+    if (result.includes("H")) {
+        result = result.replace("H", convertToTwoDigit(dateObject.getHours()));
+    }
+    if (result.includes("M")) {
+        result = result.replace("M", convertToTwoDigit(dateObject.getMinutes()));
+    }
+    if (result.includes("S")) {
+        result = result.replace("S", convertToTwoDigit(dateObject.getSeconds()));
     }
 
-    return output;
+    return result;
 };

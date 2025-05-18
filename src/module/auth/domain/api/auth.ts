@@ -1,59 +1,26 @@
-// import { mapStudyApi } from "@infrastructure/config/endpointUrl/mapstudy";
-import { appRequest } from "module/_core/infras/config/request/axios";
-import { requester } from "module/_core/infras/config/request/requester";
-import { LoginDTO, LoginResponseDTO } from "../dto/login";
-import { MeDTO } from "../dto/me";
-import { RegisterDTO, RegisterResponseDTO } from "../dto/register";
+import { UserDTO } from "module/user/domain/dto/user";
 import { AuthEndpoint } from "../../infras/config/endpointUrl";
+import { LoginDTO } from "../dto/auth";
+import { requester } from "module/_core/infras/config/request";
 
 export class AuthApi {
     static async login(loginDto: LoginDTO) {
-        return requester<{
-            user: MeDTO;
+        return requester.call<{
+            user: UserDTO;
             accessToken: string;
         }>({
             requestFunc: () =>
-                appRequest.mapServer.post(AuthEndpoint.login(), loginDto, {
+                requester.mapServerAxios.post(AuthEndpoint.login(), loginDto, {
                     withCredentials: true
                 }),
-            boundedTime: 200,
-            handleData: (data: LoginResponseDTO) => data.data
-        })();
-    }
-
-    static async loginGoogle(token: string) {
-        return requester<{ user: MeDTO; accessToken: string }>({
-            requestFunc: () =>
-                appRequest.mapServer.post(AuthEndpoint.login_google(), {
-                    token
-                }),
-            boundedTime: 200,
-            handleData: (data: LoginResponseDTO) => data.data
-        })();
-    }
-
-    static async register(registerDto: RegisterDTO) {
-        const formData = new FormData();
-
-        formData.append("data", JSON.stringify(registerDto));
-
-        return requester<MeDTO>({
-            requestFunc: () =>
-                appRequest.mapServer.post(AuthEndpoint.register(), formData, {
-                    headers: {
-                        "Content-Type": "multipart/form-data"
-                    },
-                    withCredentials: true
-                }),
-            boundedTime: 200,
-            handleData: (data: RegisterResponseDTO) => data.data.user
+            handleData: (data) => data.data
         })();
     }
 
     static async logout() {
-        return requester({
+        return requester.call({
             requestFunc: () =>
-                appRequest.mapServer.get(AuthEndpoint.logout(), {
+                requester.mapServerAxios.get(AuthEndpoint.logout(), {
                     withCredentials: true
                 })
         })();

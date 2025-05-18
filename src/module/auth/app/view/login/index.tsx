@@ -1,89 +1,83 @@
 "use client";
-import { useLoadingOverlayAction } from "module/_core/app/component/AppModal/util";
-import withAuth from "module/_core/app/component/Auth/withAuth";
+
+import MainForm from "module/_core/app/component/Form/MainForm";
 import { AuthService } from "module/auth/domain/service/auth";
-import Head from "next/head";
-import { useGoogleLogin } from "@react-oauth/google";
-import { showToast } from "@lib/component/Toast/Toast";
-import { ToastType } from "@lib/component/Toast/type";
-import Layout from "@module/_core/app/component/Layout";
+import strings from "module/_core/infras/constant/strings";
+import { errorHandler } from "module/_core/infras/util/exceptionHandler";
+import { Button, Form, Input } from "antd";
+import { AppLoadingViewOverlay } from "@module/_core/app/component/Loading/AppLoading";
 import { useRouter, useSearchParams } from "next/navigation";
+
+interface LoginFormData {
+    username: string;
+    password: string;
+}
 
 const LoginView = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirect = searchParams?.get("redirect");
-    const { loginGoogleMutation } = AuthService.useAuthAction();
+    const { loginMutation } = AuthService.useAuthAction();
 
-    const { openLoadingOverlay, closeLoadingOverlay } = useLoadingOverlayAction();
-
-    const handleGoogleLogin = useGoogleLogin({
-        onSuccess: async (tokenResponse) => {
-            try {
-                openLoadingOverlay("Đang đang nhập...");
-                if (tokenResponse) {
-                    loginGoogleMutation.mutate(tokenResponse.access_token, {
-                        onError: (error: any) => {
-                            // errorHandler(error);
-                            closeLoadingOverlay();
-                        },
-                        onSuccess: async () => {
-                            await router.replace(redirect ?? "/");
-                            closeLoadingOverlay();
-                        }
-                    });
+    const handleSubmit = async (values: LoginFormData) => {
+        loginMutation.mutate(
+            {
+                username: values.username,
+                password: values.password
+            },
+            {
+                onError: (error: any) => {
+                    errorHandler(error);
+                },
+                onSuccess: async () => {
+                    router.replace((redirect as string) ?? "/");
                 }
-            } catch (e: any) {
-                closeLoadingOverlay();
-                showToast({
-                    type: ToastType.ERROR,
-                    description: e.message.toString()
-                });
             }
-        },
-        onError: (error) => {
-            showToast({
-                type: ToastType.ERROR,
-                description: "Đã xảy ra lỗi vui lòng thử lại"
-            });
-        }
-    });
+        );
+    };
 
     return (
-        <>
-            <Head>
-                <title>Login | mentorapp.com</title>
-            </Head>
-
-            <div className="relative bg-white pb-20 pt-[60px]">
-                <div className="responsive-layout flex h-full min-h-[50vh] px-5 tab:px-0">
-                    <div className="flex w-full flex-col items-center justify-center">
-                        <p className="text-center text-2xl text-[28px] text-[#000] tab:text-start">
-                            Login to Mentor App
-                        </p>
-                        <div
-                            className="flex-center ml-[0.5px] mt-8 flex w-full cursor-pointer justify-center rounded-xs border-[0.5px] border-[#A8A8A8] py-3 tab:w-max tab:px-16"
-                            onClick={() => handleGoogleLogin()}
-                        >
-                            <div className="flex">
-                                <img src="/assets/images/social/login-google.png" alt="" className="h-6 w-6" />
-                                <span className="ml-2 text-lg tab:text-md">Sign in with Google</span>
-                            </div>
+        <div className="absolute inset-0 flex-center">
+            <MainForm name="loginForm" onFinish={handleSubmit}>
+                <div className="flex items-center text-secondary-typo tabx:px-10 lap:px-40">
+                    <div className="hidden tabx:flex flex-col justify-center items-center basis-1/2 lap:pr-32 border-r-[1px] border-r-[#DCECFC]">
+                        <div className="w-full mb-8">
+                            <h2 className="text-[2.5rem] font-bold mb-2">Chào mừng trở lại</h2>
+                            <p className="text-md w-80">
+                                Học tập và giao lưu với hàng triệu học viên trên mọi miền đất nước.
+                            </p>
                         </div>
-                        <div
-                            className="flex-center ml-[0.5px] mt-8 flex w-full cursor-pointer justify-center rounded-xs border-[0.5px] border-[#A8A8A8] py-3 tab:w-max tab:px-16"
-                            onClick={() => handleGoogleLogin()}
+                        <img src="/images/study.png" alt="" className="w-full" />
+                    </div>
+                    <div className="w-full basis-1/2 tabx:pl-14 lap:pl-32 flex flex-col flex-center min-w-[350px]">
+                        <h3 className="text-2xl font-semibold mb-8 uppercase">Đăng nhập</h3>
+                        <Form.Item
+                            name="username"
+                            label="Tên đăng nhập"
+                            className="w-full"
+                            rules={[{ required: true, message: strings.input_required_error }]}
                         >
-                            <div className="flex">
-                                <img src="/assets/images/social/login-google.png" alt="" className="h-6 w-6" />
-                                <span className="ml-2 text-lg tab:text-md">Sign in with Google</span>
-                            </div>
-                        </div>
+                            <Input placeholder="Tên đăng nhập" />
+                        </Form.Item>
+                        <Form.Item
+                            name="password"
+                            label="Mật khẩu"
+                            className="w-full"
+                            rules={[{ required: true, message: strings.input_required_error }]}
+                        >
+                            <Input.Password placeholder="Mật khẩu" />
+                        </Form.Item>
+                        <Button type="primary" htmlType="submit" className="px-10 py-3 mb-8 !bg-primary !h-min">
+                            Đăng nhập
+                        </Button>
                     </div>
                 </div>
-            </div>
-        </>
+            </MainForm>
+            {loginMutation.isPending ? (
+                <AppLoadingViewOverlay title="Đang đăng nhập..." titleClassName="text-white" />
+            ) : null}
+        </div>
     );
 };
 
-export default withAuth(LoginView);
+export default LoginView;

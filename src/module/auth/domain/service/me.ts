@@ -1,40 +1,34 @@
+import { UserApi } from "module/user/domain/api/user";
+import { UpdateOneUserDTO, UserDTO } from "module/user/domain/dto/user";
 import { useFetcher } from "module/_core/infras/hook/useFetcher";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MeApi } from "../api/me";
-import { Gender } from "../config/type/gender";
-import { MeDTO } from "../dto/me";
-import { AuthService } from "./auth";
-import { useIsomorphicLayoutEffect } from "lib/hook/useIsomorphicLayoutEffect";
 
 export class MeService {
     static ME_KEY = "ME";
 
-    static genderMapName = {
-        [Gender.MALE]: "Nam",
-        [Gender.FEMALE]: "Nữ"
+    static getLocalUser = (): UserDTO | undefined => {
+        const userString = localStorage.getItem("user");
+        if (userString) return JSON.parse(userString) as UserDTO;
+        return undefined;
     };
 
-    static useInitMe = () => {
-        const meAction = this.useMeAction();
-        useIsomorphicLayoutEffect(() => {
-            meAction.mutateLocal();
-        }, []);
-    };
-
-    static useMe = () => {
-        const { isLogin } = AuthService.useAuth();
-        const { data, isPending, isFetching, isError, error } = useFetcher([this.ME_KEY], MeApi.getMe, {
-            enabled: !!isLogin,
+    static useMe = ({ enabled = true } = {}) => {
+        const { data, isPending, isFetching, isError, error, refetch } = useFetcher([this.ME_KEY], MeApi.getMe, {
+            enabled: enabled,
             staleTime: 120000,
-            gcTime: Infinity
+            refetchOnWindowFocus: true,
+            initialData: this.getLocalUser
         });
 
         return {
             data,
+            me: data,
             isPending,
             isFetching,
             isError,
-            error
+            error,
+            refetch
         };
     };
 
@@ -45,31 +39,24 @@ export class MeService {
             return queryClient.setQueryData([this.ME_KEY], data ?? this.getLocalUser);
         };
 
-        // const updateMeMutation = useMutation({
-        //     mutationFn: ({
-        //         userId,
-        //         updateMeDTO,
-        //         avatarImage
-        //     }: {
-        //         userId: string;
-        //         updateMeDTO: UpdateMeDTO;
-        //         avatarImage: File;
-        //     }) => UserApi.updateOneUser(userId, updateOneUserDTO, avatarImage),
-        //     onSuccess: () => {
-        //         queryClient.invalidateQueries();
-        //     }
-        // });
+        const updateMeMutation = useMutation({
+            mutationFn: ({
+                userId,
+                updateOneUserDTO,
+                avatarImage
+            }: {
+                userId: number;
+                updateOneUserDTO: UpdateOneUserDTO;
+                avatarImage: File;
+            }) => UserApi.updateOneUser(userId, updateOneUserDTO, avatarImage),
+            onSuccess: () => {
+                queryClient.invalidateQueries();
+            }
+        });
 
         return {
-            mutateLocal
-            // updateMeMutation
+            mutateLocal,
+            updateMeMutation
         };
-    };
-
-    static getLocalUser = (): MeDTO | undefined => {
-        if (typeof window === "undefined") return;
-        const userString = localStorage.getItem("user");
-        if (userString) return JSON.parse(userString) as MeDTO;
-        return undefined;
     };
 }

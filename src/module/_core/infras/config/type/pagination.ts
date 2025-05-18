@@ -3,8 +3,3 @@ export interface Pagination {
     currentPage: number;
     pageSize: number;
 }
-
-export interface PaginationFilter {
-    pageSize: number;
-    page: number;
-}

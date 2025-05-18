@@ -3,10 +3,10 @@ export interface CreateApi<T> {
 }
 
 export interface UpdateApi<T> {
-    param: string;
+    param: number;
     body: T;
 }
 
 export interface DeleteApi {
-    param: string;
+    param: number;
 }
